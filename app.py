@@ -1,21 +1,23 @@
 import streamlit as st
 import pandas as pd
+import os
+from PIL import Image
 
-# 1. CONFIGURACIÓN DE PÁGINA (Menú abierto por defecto)
+# 1. CONFIGURACIÓN DE PÁGINA
 st.set_page_config(
     page_title="Sirius Community PRO", 
     layout="wide", 
-    initial_sidebar_state="expanded" # Esto obliga a que el menú inicie abierto
+    initial_sidebar_state="expanded"
 )
 
-# 2. ESTILO CSS PARA VISIBILIDAD Y BOTÓN DE MENÚ
+# 2. ESTILO CSS (Visibilidad y Flecha Neón)
 st.markdown("""
     <style>
-    /* Fondo y textos generales */
     .stApp { background-color: #0b0e14; }
     p, span, label, .stMarkdown { color: #ffffff !important; }
+    h1, h2, h3 { color: #00ffcc !important; text-shadow: 0 0 5px rgba(0, 255, 204, 0.3); }
     
-    /* Hacer que la flechita original de Streamlit sea NEÓN y más grande */
+    /* Hacer la flecha del menú gigante y neón */
     button[kind="headerNoPadding"] {
         background-color: #00ffcc !important;
         color: #0b0e14 !important;
@@ -24,77 +26,75 @@ st.markdown("""
         margin: 10px;
     }
 
-    /* Estilo del menú lateral */
+    .stTextInput>div>div>input {
+        background-color: #1a1c24 !important;
+        color: white !important;
+        border: 2px solid #3d3f4b !important;
+    }
+
     section[data-testid="stSidebar"] {
         background-color: #161922 !important;
         border-right: 2px solid #00ffcc;
-        min-width: 300px !important;
-    }
-
-    /* Botón Flotante de Registro para cuando no ven el menú */
-    .menu-btn {
-        background-color: #00ffcc;
-        color: #0b0e14;
-        padding: 10px 20px;
-        border-radius: 8px;
-        text-align: center;
-        font-weight: bold;
-        margin-bottom: 20px;
-        display: inline-block;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# 3. BARRA LATERAL (LOGIN)
+# 3. BARRA LATERAL (INICIO DE SESIÓN)
 with st.sidebar:
-    st.title("🎮 PANEL DE ACCESO")
-    st.write("---")
-    user_email = st.text_input("📩 Introduce tu Correo para entrar", placeholder="tu@correo.com")
+    st.title("🎮 PANEL SIRIUS")
+    user_email = st.text_input("📩 Correo Electrónico", placeholder="tu@correo.com")
     
     if user_email:
-        st.success(f"Sesión activa: {user_email}")
+        st.success(f"Sesión: {user_email}")
         st.write("---")
-        rol = st.radio("Selecciona una opción:", 
-                      ["🏆 Clasificación", "📝 Inscribir Equipo", "⚙️ Administración"])
+        rol = st.radio("Menú:", ["🏆 Clasificación", "📝 Inscribir Equipo", "⚙️ Administración"])
     else:
-        st.warning("Escribe tu correo para desbloquear el menú.")
+        st.warning("Introduce tu correo para ver las opciones.")
 
-# 4. CUERPO PRINCIPAL (LOGICA DE VISIBILIDAD)
+# 4. CONTENIDO PRINCIPAL
 if not user_email:
     st.title("⚽ Sirius Community")
-    st.subheader("¡Bienvenido!")
-    
-    # Mensaje de ayuda con instrucciones visuales
-    st.error("👉 MIRA A LA IZQUIERDA: Si no ves el cuadro de login, busca una pequeña flecha '>' en la esquina superior izquierda de tu pantalla.")
-    
-    st.info("""
-    **¿Cómo registrarse?**
-    1. Abre el menú lateral (usa la flecha arriba a la izquierda si está oculto).
-    2. Pon tu correo electrónico.
-    3. Elige 'Inscribir Equipo' en las opciones que aparecerán.
-    """)
-    
-    # Imagen de referencia o Logo si lo tienes
-    st.image("https://via.placeholder.com/800x200/0b0e14/00ffcc?text=SIRIUS+COMMUNITY+ESPORTS", use_column_width=True)
+    st.info("Abre el menú a la izquierda e ingresa tu correo para registrar tu equipo.")
+    if os.path.exists('logo.png'):
+        st.image('logo.png', width=250)
 
 else:
-    # SI YA PUSO EL CORREO, MOSTRAR EL CONTENIDO
     if rol == "🏆 Clasificación":
         st.title("Tabla de Posiciones")
-        # Tu tabla de posiciones aquí...
+        # Tabla de ejemplo
+        df = pd.DataFrame({
+            "Equipo": ["Sirius Elite", "Titanes FC", "Dragones Negros"],
+            "PJ": [10, 10, 10],
+            "PTS": [28, 22, 19]
+        })
+        st.table(df)
         
     elif rol == "📝 Inscribir Equipo":
-        st.title("Formulario de Inscripción")
-        with st.form("registro_equipo"):
-            st.text_input("Nombre del Equipo")
-            st.text_input("EA ID del DT")
-            st.text_input("WhatsApp")
-            if st.form_submit_button("Enviar Registro"):
-                st.balloons()
-                st.success("¡Datos enviados al Administrador!")
+        st.title("Registro de Equipo")
+        st.write("Completa los datos para participar en la liga.")
+        
+        with st.form("registro_simplificado"):
+            # SOLO LOS 3 CAMPOS QUE PEDISTE
+            nombre_eq = st.text_input("Nombre del Equipo")
+            whatsapp_dt = st.text_input("Número de WhatsApp (ej: +593...)")
+            logo_subido = st.file_uploader("Sube el Logo del Equipo (PNG/JPG)", type=["png", "jpg", "jpeg"])
+            
+            submit = st.form_submit_button("Enviar Inscripción")
+            
+            if submit:
+                if nombre_eq and whatsapp_dt:
+                    st.balloons()
+                    st.success(f"¡El equipo {nombre_eq} ha sido enviado con éxito!")
+                else:
+                    st.error("Por favor, rellena el nombre y el WhatsApp.")
 
     elif rol == "⚙️ Administración":
-        st.title("Panel Maestro")
-        passw = st.text_input("Clave de Admin", type="password")
-        if passw == "Sirius2026":
-            st.write("Bienvenido, Walllesglint72")
+        st.title("Panel de Control")
+        clave = st.text_input("Código Maestro", type="password")
+        if clave == "Sirius2026":
+            st.write("### Gestión de Torneos")
+            st.button("Crear Nueva Liga")
+            st.button("Ver Inscripciones")
+
+st.sidebar.divider()
+st.sidebar.caption("v1.4 | Walllesglint72")
