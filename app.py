@@ -6,6 +6,7 @@ from PIL import Image
 # 1. CONFIGURACIÓN
 st.set_page_config(page_title="Sirius Community PRO v2", layout="wide", initial_sidebar_state="expanded")
 
+# Inicialización de estados
 if 'equipos_db' not in st.session_state:
     st.session_state['equipos_db'] = []
 if 'ligas' not in st.session_state:
@@ -35,15 +36,14 @@ with st.sidebar:
         st.write("---")
         rol = st.radio("Menú:", ["🏆 Competiciones", "📋 Área de DT (Reportar)", "📝 Inscripción", "⚙️ Admin"])
 
-# Lógica de Cruces Dinámica
+# Lógica de Cruces
 def generar_fixture(nombres, num_jornadas):
     if len(nombres) < 2: return []
-    random.shuffle(nombres)
     total_fixture = []
     for i in range(num_jornadas):
         partidos = []
         copia = nombres.copy()
-        random.shuffle(copia) # Mezclar en cada jornada para variedad
+        random.shuffle(copia)
         while len(copia) > 1:
             partidos.append(f"{copia.pop(0)} vs {copia.pop(0)}")
         total_fixture.append(partidos)
@@ -61,7 +61,7 @@ if user_email:
         with t1:
             eqs = [e for e in st.session_state['equipos_db'] if e["Torneo"] == sel]
             if eqs: st.table(pd.DataFrame(eqs)[["Nombre", "WhatsApp"]])
-            else: st.info("Sin equipos.")
+            else: st.info("Sin equipos inscritos.")
         with t2:
             if sel in st.session_state['calendarios']:
                 for i, jor in enumerate(st.session_state['calendarios'][sel]):
@@ -71,64 +71,95 @@ if user_email:
 
     elif rol == "📋 Área de DT (Reportar)":
         st.title("Reporte de Resultados")
-        with st.form("reporte"):
-            torneo = st.selectbox("Torneo", st.session_state['ligas'] + st.session_state['relampagos'])
-            col1, col2 = st.columns(2)
-            loc = col1.text_input("Local"); vis = col2.text_input("Visitante")
-            g_l = col1.number_input("Goles L", min_value=0); g_v = col2.number_input("Goles V", min_value=0)
-            foto = st.file_uploader("Evidencia (Foto)", type=["jpg", "png"])
-            if st.form_submit_button("Enviar Reporte"):
-                if loc and vis and foto:
-                    st.session_state['reportes_resultados'].append({
-                        "Torneo": torneo, "Partido": f"{loc} {g_l}-{g_v} {vis}", "Foto": foto, "DT": user_email
-                    })
-                    st.success("Reporte enviado.")
+        # Selección de torneo para filtrar equipos
+        torneo_sel = st.selectbox("Selecciona el Torneo", st.session_state['ligas'] + st.session_state['relampagos'])
+        
+        # Obtener nombres de equipos registrados en ese torneo
+        equipos_en_torneo = [e["Nombre"] for e in st.session_state['equipos_db'] if e["Torneo"] == torneo_sel]
+        
+        if not equipos_en_torneo:
+            st.warning("No hay equipos registrados en este torneo para reportar resultados.")
+        else:
+            with st.form("reporte"):
+                col1, col2 = st.columns(2)
+                loc = col1.selectbox("Equipo Local", equipos_en_torneo)
+                vis = col2.selectbox("Equipo Visitante", equipos_en_torneo)
+                
+                g_l = col1.number_input(f"Goles {loc}", min_value=0, step=1)
+                g_v = col2.number_input(f"Goles {vis}", min_value=0, step=1)
+                
+                foto = st.file_uploader("Evidencia (Captura de pantalla)", type=["jpg", "png", "jpeg"])
+                
+                if st.form_submit_button("Enviar Reporte"):
+                    if loc == vis:
+                        st.error("El equipo local y visitante no pueden ser el mismo.")
+                    elif foto:
+                        st.session_state['reportes_resultados'].append({
+                            "Torneo": torneo_sel, 
+                            "Partido": f"{loc} {g_l}-{g_v} {vis}", 
+                            "Foto": foto, 
+                            "DT": user_email
+                        })
+                        st.success("Reporte enviado correctamente a revisión.")
+                    else:
+                        st.error("Debes subir la foto de evidencia.")
 
     elif rol == "📝 Inscripción":
         st.title("Inscripción de Equipo")
-        with st.form("ins"):
-            nom = st.text_input("Nombre del Club / Equipo")
-            wa = st.text_input("WhatsApp de Contacto")
-            logo = st.file_uploader("Subir Logo del Club (Opcional)", type=["png", "jpg", "jpeg"])
-            tipo = st.radio("Tipo de Torneo:", ["Liga Regular", "Relámpago"], horizontal=True)
-            dest = st.selectbox("Seleccionar Torneo Específico", st.session_state['ligas'] if tipo == "Liga Regular" else st.session_state['relampagos'])
-            if st.form_submit_button("Confirmar Registro"):
-                if nom and wa:
-                    st.session_state['equipos_db'].append({"Nombre": nom, "WhatsApp": wa, "Torneo": dest, "Logo": logo})
-                    st.success(f"¡{nom} ha sido registrado en {dest}!")
+        # Radio para elegir tipo
+        tipo_t = st.radio("Tipo de Torneo:", ["Liga Regular", "Relámpago"], horizontal=True)
+        
+        # Filtrado dinámico de la lista de torneos según el radio anterior
+        opciones_torneo = st.session_state['ligas'] if tipo_t == "Liga Regular" else st.session_state['relampagos']
+        
+        with st.form("ins_form"):
+            nom_club = st.text_input("Nombre del Club / Equipo")
+            wa_num = st.text_input("WhatsApp de Contacto")
+            logo_club = st.file_uploader("Subir Logo (Opcional)", type=["png", "jpg", "jpeg"])
+            torneo_final = st.selectbox("Confirmar Torneo", opciones_torneo)
+            
+            if st.form_submit_button("Registrar"):
+                if nom_club and wa_num:
+                    st.session_state['equipos_db'].append({
+                        "Nombre": nom_club, 
+                        "WhatsApp": wa_num, 
+                        "Torneo": torneo_final, 
+                        "Logo": logo_club
+                    })
+                    st.success(f"¡{nom_club} registrado con éxito en {torneo_final}!")
                 else:
-                    st.error("Nombre y WhatsApp son obligatorios.")
+                    st.error("Faltan datos obligatorios.")
 
     elif rol == "⚙️ Admin":
-        st.title("Panel de Administración")
-        pass_input = st.text_input("Código Maestro", type="password")
-        if pass_input == "Sirius2026":
-            tab1, tab2, tab3 = st.tabs(["Equipos", "Cruces", "Validar"])
+        st.title("Panel Admin")
+        pass_in = st.text_input("Código Maestro", type="password")
+        if pass_in == "Sirius2026":
+            t_admin1, t_admin2, t_admin3 = st.tabs(["Gestión", "Generar Cruces", "Reportes"])
             
-            with tab1: # GESTIÓN
+            with t_admin1:
                 if st.session_state['equipos_db']:
-                    df = pd.DataFrame(st.session_state['equipos_db'])
-                    st.dataframe(df[["Nombre", "WhatsApp", "Torneo"]])
-                    eq_del = st.selectbox("Selecciona equipo para eliminar:", [e["Nombre"] for e in st.session_state['equipos_db']])
-                    if st.button("🗑️ Eliminar Equipo"):
-                        st.session_state['equipos_db'] = [e for e in st.session_state['equipos_db'] if e["Nombre"] != eq_del]
+                    st.write("Equipos Registrados:")
+                    df_eq = pd.DataFrame(st.session_state['equipos_db'])
+                    st.dataframe(df_eq[["Nombre", "WhatsApp", "Torneo"]])
+                    
+                    e_borrar = st.selectbox("Eliminar equipo:", [e["Nombre"] for e in st.session_state['equipos_db']])
+                    if st.button("🗑️ Borrar"):
+                        st.session_state['equipos_db'] = [e for e in st.session_state['equipos_db'] if e["Nombre"] != e_borrar]
                         st.rerun()
-            
-            with tab2: # GENERADOR DE JORNADAS
-                st.subheader("Generador de Calendario Personalizado")
-                t_sel = st.selectbox("Selecciona Competición:", st.session_state['ligas'] + st.session_state['relampagos'])
-                n_jor = st.number_input("¿Cuántas jornadas quieres generar?", min_value=1, max_value=20, value=3)
-                
-                if st.button("⚡ Generar Cruces"):
-                    noms = [e["Nombre"] for e in st.session_state['equipos_db'] if e["Torneo"] == t_sel]
-                    if len(noms) >= 2:
-                        st.session_state['calendarios'][t_sel] = generar_fixture(noms, int(n_jor))
-                        st.success(f"Se han generado {n_jor} jornadas para {t_sel}.")
-                    else:
-                        st.error("Necesitas al menos 2 equipos inscritos en este torneo.")
 
-            with tab3: # VALIDACIÓN
-                for r in st.session_state['reportes_resultados']:
-                    with st.expander(f"Partido: {r['Partido']}"):
-                        st.write(f"Enviado por: {r['DT']}")
-                        st.image(r['Foto'])
+            with t_admin2:
+                t_gen = st.selectbox("Torneo para Calendario:", st.session_state['ligas'] + st.session_state['relampagos'])
+                n_jor = st.number_input("Número de Jornadas:", min_value=1, max_value=20, value=3)
+                if st.button("⚡ Generar"):
+                    nombres = [e["Nombre"] for e in st.session_state['equipos_db'] if e["Torneo"] == t_gen]
+                    if len(nombres) >= 2:
+                        st.session_state['calendarios'][t_gen] = generar_fixture(nombres, int(n_jor))
+                        st.success(f"Calendario de {n_jor} jornadas creado.")
+                    else:
+                        st.error("Faltan equipos en este torneo.")
+
+            with t_admin3:
+                for rep in st.session_state['reportes_resultados']:
+                    with st.expander(f"Resultado: {rep['Partido']} ({rep['Torneo']})"):
+                        st.write(f"Informado por: {rep['DT']}")
+                        st.image(rep['Foto'])
