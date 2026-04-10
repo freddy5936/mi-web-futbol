@@ -6,162 +6,171 @@ from datetime import datetime
 from PIL import Image
 
 # 1. CONFIGURACIÓN
-st.set_page_config(page_title="Sirius Copa Fácil IA", layout="wide")
+st.set_page_config(page_title="Sirius Community PRO", layout="wide")
 
-# 2. BASE DE DATOS INTEGRADA
+# 2. SISTEMA DE DATOS
 if 'usuarios' not in st.session_state:
-    st.session_state['usuarios'] = {"walllesglint72@gmail.com": "Sirius2026"}
+    st.session_state['usuarios'] = {"admin@sirius.com": "Sirius2026", "walllesglint72@gmail.com": "Sirius2026"}
+if 'usuario_logueado' not in st.session_state: st.session_state['usuario_logueado'] = None
+if 'view' not in st.session_state: st.session_state['view'] = 'login'
 if 'equipos_db' not in st.session_state: st.session_state['equipos_db'] = []
 if 'partidos_db' not in st.session_state: st.session_state['partidos_db'] = []
-if 'buzon_ia' not in st.session_state: st.session_state['buzon_ia'] = []
-if 'usuario_logueado' not in st.session_state: st.session_state['usuario_logueado'] = None
+if 'eliminatorias_db' not in st.session_state: st.session_state['eliminatorias_db'] = []
+if 'reportes_pendientes' not in st.session_state: st.session_state['reportes_pendientes'] = []
+if 'noticias' not in st.session_state: 
+    st.session_state['noticias'] = [{"fecha": "10/04/2026", "titulo": "Fase Final Activada", "contenido": "Ya disponible la creación de eliminatorias tras la liga.", "icono": "🔥"}]
 
-# 3. ESTILO VISUAL NEÓN
+# 3. ESTILO CSS
 st.markdown("""
     <style>
-    .stApp { background-color: #0b1016; }
-    h1, h2, h3 { color: #00ffcc !important; text-align: center; font-family: 'Oswald', sans-serif; }
-    .stButton>button { background-color: #00ffcc !important; color: #0b1016 !important; font-weight: bold; border-radius: 10px; border: none; }
-    .card { background-color: #1a1f26; padding: 15px; border-radius: 15px; border-left: 5px solid #00ffcc; margin-bottom: 10px; }
-    section[data-testid="stSidebar"] { background-color: #11151c !important; border-right: 1px solid #00ffcc; }
+    .stApp { background-color: #0b0e14; }
+    html, body, [data-testid="stWidgetLabel"], .stMarkdown, p, span, label { color: #ffffff !important; }
+    h1, h2, h3 { color: #00ffcc !important; text-align: center; text-transform: uppercase; }
+    .noticia-card { background-color: #1a1c24; border-left: 5px solid #00ffcc; padding: 20px; border-radius: 12px; margin-bottom: 15px; }
+    .stButton>button { width: 100%; background-color: #00ffcc !important; color: #0b0e14 !important; font-weight: bold; border-radius: 8px; }
+    section[data-testid="stSidebar"] { background-color: #161922 !important; border-right: 1px solid #00ffcc; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- LÓGICA DE TABLA ---
-def generar_tabla():
+# --- LÓGICA DE TORNEO ---
+def calcular_tabla_automatica():
     if not st.session_state['equipos_db']: return pd.DataFrame()
-    data = []
+    stats = []
     for eq in st.session_state['equipos_db']:
-        n = eq["Nombre"]
+        nombre = eq["Nombre"]
         pj, pg, pe, pp, gf, gc = 0, 0, 0, 0, 0, 0
         for p in st.session_state['partidos_db']:
-            if p["Estado"] == "Finalizado":
-                if p["Local"] == n:
-                    pj += 1; gf += p["GL"]; gc += p["GV"]
-                    if p["GL"] > p["GV"]: pg += 1
-                    elif p["GL"] == p["GV"]: pe += 1
+            if p.get("Estado") == "Finalizado":
+                gl, gv = p.get("GL", 0), p.get("GV", 0)
+                if p["Local"] == nombre:
+                    pj += 1; gf += gl; gc += gv
+                    if gl > gv: pg += 1
+                    elif gl == gv: pe += 1
                     else: pp += 1
-                elif p["Visitante"] == n:
-                    pj += 1; gf += p["GV"]; gc += p["GL"]
-                    if p["GV"] > p["GL"]: pg += 1
-                    elif p["GV"] == p["GL"]: pe += 1
+                elif p["Visitante"] == nombre:
+                    pj += 1; gf += gv; gc += gl
+                    if gv > gl: pg += 1
+                    elif gv == gl: pe += 1
                     else: pp += 1
-        data.append({"Equipo": n, "PJ": pj, "G": pg, "E": pe, "P": pp, "GF": gf, "GC": gc, "PTS": (pg*3 + pe)})
-    return pd.DataFrame(data).sort_values(by="PTS", ascending=False)
+        stats.append({"Equipo": nombre, "PJ": pj, "G": pg, "E": pe, "P": pp, "GF": gf, "GC": gc, "PTS": (pg*3 + pe)})
+    return pd.DataFrame(stats).sort_values(by=["PTS", "GF"], ascending=False)
 
-# 4. LOGIN
+# 4. ACCESO
 if st.session_state['usuario_logueado'] is None:
-    st.title("⚽ SIRIUS COPA FÁCIL")
-    col1, col2, col3 = st.columns([1,2,1])
-    with col2:
-        u = st.text_input("Correo")
-        p = st.text_input("Contraseña", type="password")
-        if st.button("INGRESAR"):
-            if u in st.session_state['usuarios'] and st.session_state['usuarios'][u] == p:
-                st.session_state['usuario_logueado'] = u
-                st.rerun()
-            else: st.error("Acceso denegado")
-
-# 5. PANEL DE CONTROL
+    st.title("⚽ SIRIUS COMMUNITY")
+    u = st.text_input("Correo"); p = st.text_input("Contraseña", type="password")
+    if st.button("ENTRAR"):
+        if u in st.session_state['usuarios'] and st.session_state['usuarios'][u] == p:
+            st.session_state['usuario_logueado'] = u; st.rerun()
+        else: st.error("Datos incorrectos.")
 else:
     with st.sidebar:
-        st.header("SIRIUS PANEL")
-        menu = st.radio("IR A:", ["🏠 Inicio", "🏆 Tabla y Jornadas", "📋 Reportar Resultado", "📝 Inscripción", "⚙️ Admin"])
-        if st.button("Cerrar Sesión"):
-            st.session_state['usuario_logueado'] = None
-            st.rerun()
+        st.title("SIRIUS PRO")
+        opc = ["🏠 Inicio", "🏆 Torneo y Tabla", "📅 Eliminatorias", "📋 Reporte DT", "📝 Inscripción"]
+        if st.session_state['usuario_logueado'] in ["admin@sirius.com", "walllesglint72@gmail.com"]:
+            opc.append("⚙️ Admin")
+        menu = st.radio("MENÚ:", opc)
+        if st.button("SALIR"): st.session_state['usuario_logueado'] = None; st.rerun()
 
     # --- INICIO ---
     if menu == "🏠 Inicio":
-        st.title("📢 BIENVENIDO A SIRIUS")
-        st.markdown('<div class="card"><h3>🏆 Temporada FC 26</h3><p>Los DTs ya pueden enviar reportes vía IA para actualizar las tablas automáticamente.</p></div>', unsafe_allow_html=True)
+        st.title("📢 NOVEDADES")
+        for n in reversed(st.session_state['noticias']):
+            st.markdown(f'<div class="noticia-card"><h3>{n["icono"]} {n["titulo"]}</h3><p>{n["contenido"]}</p></div>', unsafe_allow_html=True)
 
-    # --- TABLA Y JORNADAS ---
-    elif menu == "🏆 Tabla y Jornadas":
-        st.title("🏆 CLASIFICACIÓN Y FIXTURE")
-        t1, t2 = st.tabs(["📊 Tabla de Posiciones", "📅 Jornadas Actuales"])
-        with t1:
-            tabla = generar_tabla()
-            if not tabla.empty: st.table(tabla)
-            else: st.info("Esperando resultados finales...")
-        with t2:
-            for i, p in enumerate(st.session_state['partidos_db']):
-                status = "✅" if p["Estado"] == "Finalizado" else "⏳"
-                st.markdown(f'<div class="card">{status} {p["Local"]} **{p["GL"]} - {p['GV']}** {p["Visitante"]}</div>', unsafe_allow_html=True)
+    # --- TABLA Y LIGA ---
+    elif menu == "🏆 Torneo y Tabla":
+        st.title("🏆 LIGA REGULAR")
+        t = calcular_tabla_automatica()
+        if not t.empty: st.table(t)
+        st.subheader("📅 JORNADAS TODOS CONTRA TODOS")
+        for p in st.session_state['partidos_db']:
+            st.write(f"{p['Local']} {p.get('GL',0)} - {p.get('GV',0)} {p['Visitante']} ({p.get('Estado','Pendiente')})")
+
+    # --- ELIMINATORIAS ---
+    elif menu == "📅 Eliminatorias":
+        st.title("⚔️ FASE FINAL")
+        if not st.session_state['eliminatorias_db']:
+            st.info("La fase de eliminación aún no ha sido generada por el Admin.")
+        else:
+            for p in st.session_state['eliminatorias_db']:
+                st.markdown(f"**{p['Fase']}**: {p['Local']} vs {p['Visitante']} ➔ Marcador: {p.get('GL',0)}-{p.get('GV',0)}")
 
     # --- REPORTE DT ---
-    elif menu == "📋 Reportar Resultado":
-        st.title("📋 REPORTAR PARTIDO")
-        eqs = [e["Nombre"] for e in st.session_state['equipos_db']]
-        if not eqs: st.warning("No hay equipos.")
-        else:
-            with st.form("rep_dt"):
-                c1, c2 = st.columns(2)
-                loc = c1.selectbox("Local", eqs)
-                vis = c2.selectbox("Visitante", [e for e in eqs if e != loc])
-                f = st.file_uploader("Sube foto del marcador", type=["png", "jpg", "jpeg"])
-                if st.form_submit_button("ENVIAR A IA"):
-                    if f:
-                        # Guardar en el buzón para el admin
-                        st.session_state['buzon_ia'].append({
-                            "dt": st.session_state['usuario_logueado'],
-                            "partido": f"{loc} vs {vis}",
-                            "foto": f,
-                            "propuesta": f"{random.randint(0,5)} - {random.randint(0,5)}" # Simulación de IA
-                        })
-                        st.success("Reporte enviado al Admin correctamente.")
+    elif menu == "📋 Reporte DT":
+        st.title("📋 REPORTE DE DT")
+        nombres = [e["Nombre"] for e in st.session_state['equipos_db']]
+        with st.form("rep"):
+            loc = st.selectbox("Local:", nombres); vis = st.selectbox("Visitante:", [n for n in nombres if n != loc])
+            gl = st.number_input("Goles Local", min_value=0); gv = st.number_input("Goles Visitante", min_value=0)
+            foto = st.file_uploader("Evidencia", type=["jpg", "png"])
+            if st.form_submit_button("Enviar"):
+                if foto:
+                    st.session_state['reportes_pendientes'].append({"DT": st.session_state['usuario_logueado'], "Partido": f"{loc} vs {vis}", "Marcador": f"{gl}-{gv}", "Foto": foto})
+                    st.success("Reporte enviado.")
 
     # --- INSCRIPCIÓN ---
     elif menu == "📝 Inscripción":
-        st.title("📝 REGISTRO")
-        with st.form("ins"):
-            n = st.text_input("Nombre Club")
-            w = st.text_input("WhatsApp")
-            if st.form_submit_button("REGISTRAR"):
-                st.session_state['equipos_db'].append({"Nombre": n, "WhatsApp": w})
-                st.success("¡Registrado!")
+        st.title("📝 INSCRIPCIÓN")
+        with st.form("i"):
+            nom = st.text_input("Nombre Club"); ws = st.text_input("WhatsApp"); tor = st.selectbox("Torneo", ["Top Ligue", "Ligue 2"])
+            if st.form_submit_button("Registrar"):
+                st.session_state['equipos_db'].append({"Nombre": nom, "WhatsApp": ws, "Torneo": tor})
+                st.success("¡Inscrito!")
 
-    # --- ADMIN (EL CORAZÓN) ---
+    # --- ADMIN ---
     elif menu == "⚙️ Admin":
-        if st.session_state['usuario_logueado'] == "walllesglint72@gmail.com":
-            st.title("⚙️ PANEL DE ADMINISTRADOR")
-            ad1, ad2, ad3 = st.tabs(["⚡ Generar Jornadas", "🤖 Buzón IA", "🛠 Gestión"])
-            
-            with ad1:
-                st.subheader("Generador Tipo Copa Fácil")
-                if st.button("CREAR JORNADAS AUTOMÁTICAS"):
-                    nombres = [e["Nombre"] for e in st.session_state['equipos_db']]
-                    if len(nombres) >= 2:
-                        st.session_state['partidos_db'] = []
-                        random.shuffle(nombres)
-                        for i in range(0, len(nombres)-1, 2):
-                            st.session_state['partidos_db'].append({"Local": nombres[i], "Visitante": nombres[i+1], "GL": 0, "GV": 0, "Estado": "Pendiente"})
-                        st.success("¡Jornadas generadas!")
-                    else: st.error("Faltan equipos para cruces.")
+        st.title("⚙️ PANEL MAESTRO")
+        t1, t2, t3, t4 = st.tabs(["📩 Reportes", "⚡ Liga", "⚔️ Eliminatorias", "📱 Equipos"])
+        
+        with t1:
+            for idx, r in enumerate(st.session_state['reportes_pendientes']):
+                with st.expander(f"Reporte de {r['DT']}"):
+                    st.write(f"{r['Partido']} | Marcador: {r['Marcador']}")
+                    st.image(r['Foto'])
+                    if st.button("Validar", key=f"val{idx}"):
+                        st.session_state['reportes_pendientes'].pop(idx); st.rerun()
 
-            with ad2:
-                st.subheader("Reportes Enviados por DTs")
-                if not st.session_state['buzon_ia']:
-                    st.info("Sin reportes pendientes.")
-                else:
-                    for i, rep in enumerate(st.session_state['buzon_ia']):
-                        with st.expander(f"Reporte de {rep['dt']} - {rep['partido']}"):
-                            st.image(rep["foto"], width=400)
-                            st.write(f"**IA Detectó:** {rep['propuesta']}")
-                            c1, c2 = st.columns(2)
-                            gl = c1.number_input("Goles Local", 0, 10, key=f"gl{i}")
-                            gv = c2.number_input("Goles Visitante", 0, 10, key=f"gv{i}")
-                            if st.button("VALIDAR Y SUBIR A TABLA", key=f"btn{i}"):
-                                # Buscar el partido en el fixture y actualizarlo
-                                for p in st.session_state['partidos_db']:
-                                    if f"{p['Local']} vs {p['Visitante']}" == rep['partido']:
-                                        p["GL"], p["GV"], p["Estado"] = gl, gv, "Finalizado"
-                                st.session_state['buzon_ia'].pop(i)
-                                st.rerun()
-
-            with ad3:
-                st.subheader("Control de Datos")
-                if st.button("BORRAR TODO EL TORNEO"):
+        with t2:
+            st.subheader("Fase 1: Todos contra Todos")
+            if st.button("GENERAR LIGA COMPLETA"):
+                eqs = [e["Nombre"] for e in st.session_state['equipos_db']]
+                if len(eqs) >= 2:
                     st.session_state['partidos_db'] = []
-                    st.session_state['equipos_db'] = []
-                    st.rerun()
+                    # Algoritmo simple de todos contra todos
+                    from itertools import combinations
+                    for match in combinations(eqs, 2):
+                        st.session_state['partidos_db'].append({"Local": match[0], "Visitante": match[1], "GL": 0, "GV": 0, "Estado": "Pendiente"})
+                    st.success("Liga generada.")
+            
+            for i, p in enumerate(st.session_state['partidos_db']):
+                with st.expander(f"{p['Local']} vs {p['Visitante']}"):
+                    c1, c2 = st.columns(2)
+                    gl = c1.number_input("GL", value=p['GL'], key=f"lg{i}")
+                    gv = c2.number_input("GV", value=p['GV'], key=f"vg{i}")
+                    est = st.selectbox("Estado", ["Pendiente", "Finalizado"], index=0 if p['Estado']=="Pendiente" else 1, key=f"es{i}")
+                    if st.button("Guardar", key=f"sv{i}"):
+                        st.session_state['partidos_db'][i].update({"GL": gl, "GV": gv, "Estado": est}); st.rerun()
+
+        with t3:
+            st.subheader("Fase 2: Eliminatorias Directas")
+            st.write("Esto tomará a los mejores de la tabla.")
+            if st.button("GENERAR SEMIFINALES (Top 4)"):
+                tabla = calcular_tabla_automatica()
+                if len(tabla) >= 4:
+                    top4 = tabla['Equipo'].tolist()[:4]
+                    st.session_state['eliminatorias_db'] = [
+                        {"Fase": "Semifinal 1", "Local": top4[0], "Visitante": top4[3], "GL":0, "GV":0},
+                        {"Fase": "Semifinal 2", "Local": top4[1], "Visitante": top4[2], "GL":0, "GV":0}
+                    ]
+                    st.success("Eliminatorias creadas.")
+            
+            for idx, p in enumerate(st.session_state['eliminatorias_db']):
+                with st.expander(f"{p['Fase']}: {p['Local']} vs {p['Visitante']}"):
+                    c1, c2 = st.columns(2)
+                    p['GL'] = c1.number_input("Goles Local", value=p['GL'], key=f"egl{idx}")
+                    p['GV'] = c2.number_input("Goles Visitante", value=p['GV'], key=f"egv{idx}")
+                    if st.button("Actualizar Cruce", key=f"eb{idx}"): st.rerun()
+
+        with t4:
+            st.table(pd.DataFrame(st.session_state['equipos_db']))
