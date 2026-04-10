@@ -2,17 +2,20 @@ import streamlit as st
 import pandas as pd
 import random
 
-# 1. CONFIGURACIÓN Y MEMORIA
+# 1. CONFIGURACIÓN
 st.set_page_config(page_title="Sirius Community PRO", layout="wide", initial_sidebar_state="expanded")
 
+# MEMORIA DEL SISTEMA
 if 'equipos_registrados' not in st.session_state:
     st.session_state['equipos_registrados'] = []
-if 'ligas_creadas' not in st.session_state:
-    st.session_state['ligas_creadas'] = ["Top Ligue", "Relámpago #6"]
-if 'calendario' not in st.session_state:
-    st.session_state['calendario'] = {}
+if 'ligas' not in st.session_state:
+    st.session_state['ligas'] = ["Top Ligue"]
+if 'relampagos' not in st.session_state:
+    st.session_state['relampagos'] = ["Relámpago #6"]
+if 'calendarios' not in st.session_state:
+    st.session_state['calendarios'] = {}
 
-# 2. ESTILO CSS
+# 2. ESTILO CSS (Flecha Neón y Colores)
 st.markdown("""
     <style>
     .stApp { background-color: #0b0e14; }
@@ -26,77 +29,92 @@ st.markdown("""
 # 3. BARRA LATERAL
 with st.sidebar:
     st.title("🎮 PANEL SIRIUS")
-    user_email = st.text_input("📩 Correo", placeholder="tu@correo.com")
+    user_email = st.text_input("📩 Correo Electrónico", placeholder="tu@correo.com")
     if user_email:
+        st.write("---")
         rol = st.radio("Menú:", ["🏆 Clasificación y Cruces", "📝 Inscribir Equipo", "⚙️ Administración"])
 
-# 4. FUNCIONES DE TORNEO
-def generar_todos_contra_todos(equipos):
-    if len(equipos) < 2: return []
-    random.shuffle(equipos)
+# 4. LÓGICA DE CRUCES
+def generar_fixture(nombres_equipos):
+    if len(nombres_equipos) < 2: return []
+    random.shuffle(nombres_equipos)
     jornadas = []
-    # Genera 3 jornadas simples para el ejemplo
-    for i in range(3):
-        cruces = []
-        temp_list = equipos.copy()
-        while len(temp_list) > 1:
-            e1 = temp_list.pop(0)
-            e2 = temp_list.pop(0)
-            cruces.append(f"{e1} vs {e2}")
-        jornadas.append(cruces)
+    for i in range(3): # Genera 3 jornadas
+        partidos = []
+        copia = nombres_equipos.copy()
+        while len(copia) > 1:
+            partidos.append(f"{copia.pop(0)} vs {copia.pop(0)}")
+        jornadas.append(partidos)
     return jornadas
 
-# 5. CONTENIDO
+# 5. CONTENIDO PRINCIPAL
 if user_email:
     if rol == "🏆 Clasificación y Cruces":
-        st.title("Estado del Torneo")
+        st.title("Estado de las Competiciones")
+        cat = st.radio("Ver categoría:", ["Ligas Regulares", "Torneos Relámpago"], horizontal=True)
         
-        tab1, tab2 = st.tabs(["📊 Tabla de Equipos", "📅 Calendario de Cruces"])
+        # Filtrar equipos según la categoría seleccionada
+        lista_nombres = st.session_state['ligas'] if cat == "Ligas Regulares" else st.session_state['relampagos']
+        torneo_sel = st.selectbox(f"Selecciona {cat}:", lista_nombres)
+        
+        tab1, tab2 = st.tabs(["📊 Equipos", "📅 Calendario de Cruces"])
         
         with tab1:
-            if st.session_state['equipos_registrados']:
-                st.table(pd.DataFrame(st.session_state['equipos_registrados']))
+            equipos_filtro = [e for e in st.session_state['equipos_registrados'] if e["Torneo"] == torneo_sel]
+            if equipos_filtro:
+                st.table(pd.DataFrame(equipos_filtro))
             else:
-                st.info("Esperando inscripciones...")
+                st.info("No hay equipos inscritos aquí todavía.")
         
         with tab2:
-            if st.session_state['calendario']:
-                for liga, jornadas in st.session_state['calendario'].items():
-                    st.header(f"Liga: {liga}")
-                    for idx, j in enumerate(jornadas):
-                        with st.expander(f"Jornada {idx + 1}"):
-                            for partido in j:
-                                st.write(f"⚽ {partido}")
+            if torneo_sel in st.session_state['calendarios']:
+                for i, jornada in enumerate(st.session_state['calendarios'][torneo_sel]):
+                    with st.expander(f"Jornada {i+1}"):
+                        for p in jornada: st.write(f"⚽ {p}")
             else:
-                st.warning("El administrador aún no ha generado los cruces.")
+                st.warning("Cruces no generados por el Admin.")
 
     elif rol == "📝 Inscribir Equipo":
-        st.title("Inscripción")
-        with st.form("reg"):
-            n = st.text_input("Nombre Equipo")
-            l = st.selectbox("Liga", st.session_state['ligas_creadas'])
-            if st.form_submit_button("Registrar"):
-                st.session_state['equipos_registrados'].append({"Nombre": n, "Liga": l})
-                st.success("¡Equipo anotado!")
+        st.title("Inscripción de Equipo")
+        with st.form("registro"):
+            nombre = st.text_input("Nombre del Equipo")
+            whatsapp = st.text_input("Número de WhatsApp") # RECUPERADO
+            tipo = st.radio("Tipo de competencia:", ["Liga Regular", "Relámpago"], horizontal=True)
+            
+            # Selección dinámica según el tipo
+            opciones = st.session_state['ligas'] if tipo == "Liga Regular" else st.session_state['relampagos']
+            destino = st.selectbox("Selecciona el Torneo", opciones)
+            
+            if st.form_submit_button("Confirmar Registro"):
+                if nombre and whatsapp:
+                    st.session_state['equipos_registrados'].append({
+                        "Nombre": nombre, "WhatsApp": whatsapp, "Torneo": destino, "Categoría": tipo
+                    })
+                    st.success(f"¡{nombre} inscrito en {destino}!")
+                    st.balloons()
 
     elif rol == "⚙️ Administración":
-        st.title("Panel Maestro")
-        clave = st.text_input("Código", type="password")
-        if clave == "Sirius2026":
-            st.subheader("⚡ Generador de Cruces Automáticos")
-            liga_activa = st.selectbox("Seleccionar Liga para cerrar", st.session_state['ligas_creadas'])
+        st.title("Panel de Control Maestro")
+        if st.text_input("Clave", type="password") == "Sirius2026":
             
-            if st.button("🔒 Cerrar Inscripciones y Crear 3 Jornadas"):
-                # Filtrar equipos de esta liga
-                equipos_liga = [e["Nombre"] for e in st.session_state['equipos_registrados'] if e["Liga"] == liga_activa]
-                
-                if len(equipos_liga) >= 2:
-                    st.session_state['calendario'][liga_activa] = generar_todos_contra_todos(equipos_liga)
-                    st.balloons()
-                    st.success(f"¡Cruces generados para {liga_activa}!")
-                else:
-                    st.error("Necesitas al menos 2 equipos en esta liga.")
-            
+            st.write("### 🛠️ Gestión de Estructura")
+            col1, col2 = st.columns(2)
+            with col1:
+                nueva_l = st.text_input("Nueva Liga Regular")
+                if st.button("Crear Liga"): st.session_state['ligas'].append(nueva_l); st.rerun()
+            with col2:
+                nuevo_r = st.text_input("Nuevo Relámpago")
+                if st.button("Crear Relámpago"): st.session_state['relampagos'].append(nuevo_r); st.rerun()
+
             st.write("---")
-            if st.button("🔥 Generar Fase de Eliminación (Playoffs)"):
-                st.info("Lógica de Playoffs: Se activará al terminar las 3 jornadas.")
+            st.write("### 🔒 Cerrar Inscripciones y Generar Cruces")
+            todo = st.session_state['ligas'] + st.session_state['relampagos']
+            sel = st.selectbox("Torneo a cerrar:", todo)
+            
+            if st.button("Generar 3 Jornadas"):
+                nombres = [e["Nombre"] for e in st.session_state['equipos_registrados'] if e["Torneo"] == sel]
+                if len(nombres) >= 2:
+                    st.session_state['calendarios'][sel] = generar_fixture(nombres)
+                    st.success(f"Cruces creados para {sel}")
+                else:
+                    st.error("Necesitas mínimo 2 equipos.")
