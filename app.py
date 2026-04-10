@@ -1,19 +1,12 @@
 import streamlit as st
 import pandas as pd
 
-# Configuración básica para evitar errores de carga
+# ESTA LÍNEA DEBE IR PRIMERO SIEMPRE
 st.set_page_config(page_title="Sirius Community", layout="wide")
 
 st.title("⚽ Sirius Community")
-st.write("Bienvenido a la plataforma oficial.")
+st.write("¡La web está oficialmente activa!")
 
-# Panel de control rápido
-col1, col2 = st.columns(2)
-with col1:
-    st.info("🏆 Próximos Torneos: Disponibles pronto")
-with col2:
-    st.success("✅ Servidor: Activo")
-
-st.subheader("📊 Clasificación")
-datos = {"Equipo": ["Sirius A", "Sirius B"], "Puntos": [10, 8]}
-st.table(pd.DataFrame(datos))
+# Prueba con una tabla simple para ver si carga
+df = pd.DataFrame({"Torneo": ["Relámpago #6", "Top Ligue"], "Estado": ["Finalizado", "En curso"]})
+st.table(df)
