@@ -65,7 +65,7 @@ if rol == "Espectador":
     st.subheader("Clasificación en Vivo")
     st.info("Ve al menú de la izquierda para inscribir a tu equipo.")
 
-# 4. SECCIÓN: DIRECTORES TÉCNICOS (CON WHATSAPP)
+# 4. SECCIÓN: DIRECTORES TÉCNICOS (INSCRIPCIONES Y RESULTADOS)
 elif rol == "Director Técnico (DT)":
     st.title("📋 Área de Gestión para DTs")
     
@@ -76,19 +76,11 @@ elif rol == "Director Técnico (DT)":
             st.write("### Datos del Equipo y Contacto")
             nombre_equipo = st.text_input("Nombre del Equipo")
             nombre_dt = st.text_input("Nombre del DT / EA ID")
-            
-            # CAMPO DE TELÉFONO PARA WHATSAPP
             telefono = st.text_input("Número de WhatsApp (con código de país, ej: +593...)", placeholder="+593")
-            
             logo_equipo = st.file_uploader("Sube el Logo del Equipo", type=["png", "jpg"])
-            
             submit_inscripcion = st.form_submit_button("Enviar a Revisión")
-            
             if submit_inscripcion:
                 st.success(f"Inscripción de {nombre_equipo} enviada.")
-                # Botón de prueba para ver cómo funcionaría el link
-                link_wa = f"https://wa.me/{telefono.replace('+', '').replace(' ', '')}"
-                st.markdown(f"[📲 Probar chat de WhatsApp con el DT]({link_wa})")
 
     with tab2:
         with st.form("form_resultado"):
@@ -101,8 +93,16 @@ elif rol == "Director Técnico (DT)":
                 visita = st.text_input("Equipo Visitante")
                 goles_v = st.number_input("Goles Visitante", min_value=0)
             
+            # --- NUEVO CAMPO: SUBIR EVIDENCIA (FOTO) ---
+            st.write("---")
+            st.write("### Evidencia del Resultado")
+            evidencia_foto = st.file_uploader("Sube una captura de pantalla del final del partido (PNG/JPG)", type=["png", "jpg", "jpeg"])
+            
             if st.form_submit_button("Subir Resultado"):
-                st.warning("Resultado en espera de validación por el Admin.")
+                if evidencia_foto is not None:
+                    st.warning("Resultado y evidencia enviados. El Admin verificará la foto antes de actualizar la tabla.")
+                else:
+                    st.error("⚠️ Debes subir una foto como evidencia del resultado.")
 
 # 5. SECCIÓN: ADMINISTRADOR
 elif rol == "Administrador":
@@ -111,9 +111,9 @@ elif rol == "Administrador":
     
     if password == "Sirius2026":
         st.success("Acceso concedido.")
-        st.selectbox("Gestión:", ["Crear Torneo", "Ver solicitudes de DTs", "Editar Tabla"])
+        st.selectbox("Gestión:", ["Crear Torneo", "Ver solicitudes de DTs", "Validar Resultados (Ver Fotos)", "Editar Tabla"])
     elif password != "":
         st.error("Clave incorrecta.")
 
 st.sidebar.divider()
-st.sidebar.caption("Sirius System v1.1 - Walllesglint72")
+st.sidebar.caption("Sirius System v1.2 - Walllesglint72")
