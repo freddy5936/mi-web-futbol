@@ -6,77 +6,114 @@ import os
 # 1. CONFIGURACIÓN E INTERFAZ
 st.set_page_config(page_title="Sirius Community PRO", layout="wide")
 
-# Estilo oscuro y neón
+# ESTILO MEJORADO PARA VISIBILIDAD TOTAL
 st.markdown("""
     <style>
-    .stApp { background-color: #0b0e14; color: white; }
-    .stButton>button { background-color: #00ffcc; color: black; font-weight: bold; width: 100%; }
-    .stTextInput>div>div>input { background-color: #1a1c24; color: white; border: 1px solid #00ffcc; }
+    /* Fondo oscuro profundo */
+    .stApp { 
+        background-color: #0b0e14; 
+    }
+    
+    /* Letras de todo el cuerpo en blanco para que se vean */
+    p, span, label, .stMarkdown {
+        color: #ffffff !important;
+        font-weight: 500;
+    }
+
+    /* Títulos en Turquesa Neón */
+    h1, h2, h3 {
+        color: #00ffcc !important;
+        text-shadow: 0 0 5px rgba(0, 255, 204, 0.3);
+    }
+
+    /* Campos de texto (Inputs) con bordes visibles */
+    .stTextInput>div>div>input, .stNumberInput>div>div>input {
+        background-color: #1a1c24 !important;
+        color: white !important;
+        border: 2px solid #3d3f4b !important;
+    }
+    
+    .stTextInput>div>div>input:focus {
+        border-color: #00ffcc !important;
+    }
+
+    /* Botones Pro */
+    .stButton>button {
+        background-color: #00ffcc !important;
+        color: #0b0e14 !important;
+        font-weight: bold !important;
+        border-radius: 10px !important;
+        border: none !important;
+    }
+
+    /* Estilo de la barra lateral */
+    section[data-testid="stSidebar"] {
+        background-color: #161922 !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# 2. BARRA LATERAL (MENÚ DE USUARIO)
+# 2. BARRA LATERAL
 st.sidebar.title("🎮 PANEL SIRIUS")
 rol = st.sidebar.radio("Selecciona tu rol:", ["Espectador", "Director Técnico (DT)", "Administrador"])
 
-# 3. SECCIÓN: ESPECTADOR (LO QUE TODOS VEN)
+# 3. SECCIÓN: ESPECTADOR
 if rol == "Espectador":
     st.title("⚽ SIRIUS COMMUNITY")
-    st.subheader("Resultados y Clasificación en Vivo")
-    
-    # Aquí iría tu tabla de posiciones actual
-    st.info("Selecciona 'Director Técnico' en el menú para inscribir a tu equipo.")
+    if os.path.exists('logo.png'):
+        st.image('logo.png', width=200)
+    st.subheader("Clasificación en Vivo")
+    st.info("Ve al menú de la izquierda para inscribir a tu equipo.")
 
-# 4. SECCIÓN: DIRECTORES TÉCNICOS (INSCRIPCIONES Y RESULTADOS)
+# 4. SECCIÓN: DIRECTORES TÉCNICOS (CON WHATSAPP)
 elif rol == "Director Técnico (DT)":
-    st.title("📋 Área para DTs")
+    st.title("📋 Área de Gestión para DTs")
     
-    tab1, tab2 = st.tabs(["📝 Inscripción de Equipo", "⏱️ Reportar Resultado"])
+    tab1, tab2 = st.tabs(["📝 Inscripción y Contacto", "⏱️ Reportar Resultado"])
     
     with tab1:
         with st.form("form_inscripcion"):
-            st.write("### Formulario de Inscripción")
+            st.write("### Datos del Equipo y Contacto")
             nombre_equipo = st.text_input("Nombre del Equipo")
-            nombre_dt = st.text_input("ID de PSN / EA ID del DT")
-            logo_equipo = st.file_uploader("Sube el Logo de tu Equipo (PNG/JPG)", type=["png", "jpg", "jpeg"])
+            nombre_dt = st.text_input("Nombre del DT / EA ID")
             
-            submit_inscripcion = st.form_submit_button("Enviar Inscripción")
+            # CAMPO DE TELÉFONO PARA WHATSAPP
+            telefono = st.text_input("Número de WhatsApp (con código de país, ej: +593...)", placeholder="+593")
+            
+            logo_equipo = st.file_uploader("Sube el Logo del Equipo", type=["png", "jpg"])
+            
+            submit_inscripcion = st.form_submit_button("Enviar a Revisión")
+            
             if submit_inscripcion:
-                st.success(f"¡Equipo {nombre_equipo} enviado para revisión del Administrador!")
+                st.success(f"Inscripción de {nombre_equipo} enviada.")
+                # Botón de prueba para ver cómo funcionaría el link
+                link_wa = f"https://wa.me/{telefono.replace('+', '').replace(' ', '')}"
+                st.markdown(f"[📲 Probar chat de WhatsApp con el DT]({link_wa})")
 
     with tab2:
         with st.form("form_resultado"):
             st.write("### Reporte de Partido")
-            equipo_local = st.text_input("Equipo Local")
-            goles_local = st.number_input("Goles Local", min_value=0, step=1)
-            st.write("VS")
-            equipo_visita = st.text_input("Equipo Visitante")
-            goles_visita = st.number_input("Goles Visitante", min_value=0, step=1)
+            col1, col2 = st.columns(2)
+            with col1:
+                local = st.text_input("Equipo Local")
+                goles_l = st.number_input("Goles Local", min_value=0)
+            with col2:
+                visita = st.text_input("Equipo Visitante")
+                goles_v = st.number_input("Goles Visitante", min_value=0)
             
-            submit_resultado = st.form_submit_button("Subir Resultado")
-            if submit_resultado:
-                st.warning("Resultado enviado. El administrador debe validarlo para actualizar la tabla.")
+            if st.form_submit_button("Subir Resultado"):
+                st.warning("Resultado en espera de validación por el Admin.")
 
-# 5. SECCIÓN: ADMINISTRADOR (CONTROL TOTAL)
+# 5. SECCIÓN: ADMINISTRADOR
 elif rol == "Administrador":
     st.title("🔐 Panel de Control Sirius")
-    password = st.text_input("Introduce la clave de Admin:", type="password")
+    password = st.text_input("Clave de Acceso:", type="password")
     
-    if password == "Sirius2026": # CAMBIA ESTA CLAVE
-        st.success("Acceso concedido, Comandante.")
-        
-        accion = st.selectbox("¿Qué quieres hacer?", ["Crear Torneo", "Validar Resultados", "Gestionar Equipos"])
-        
-        if accion == "Crear Torneo":
-            nombre_t = st.text_input("Nombre del Nuevo Torneo")
-            cupos = st.slider("Número de Cupos", 8, 32, 16)
-            if st.button("Lanzar Torneo"):
-                st.balloons()
-                st.write(f"Torneo '{nombre_t}' creado con {cupos} cupos.")
-                
+    if password == "Sirius2026":
+        st.success("Acceso concedido.")
+        st.selectbox("Gestión:", ["Crear Torneo", "Ver solicitudes de DTs", "Editar Tabla"])
     elif password != "":
-        st.error("Clave incorrecta. Solo personal autorizado.")
+        st.error("Clave incorrecta.")
 
-# Pie de página
 st.sidebar.divider()
-st.sidebar.caption("Walllesglint72 Admin System v1.0")
+st.sidebar.caption("Sirius System v1.1 - Walllesglint72")
