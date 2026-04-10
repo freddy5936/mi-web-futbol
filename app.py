@@ -1,158 +1,117 @@
 import streamlit as st
 import pandas as pd
 import random
-from datetime import datetime
+import time
 
-# 1. CONFIGURACIÓN DE PÁGINA
-st.set_page_config(page_title="Sirius Community PRO", layout="wide")
+# 1. CONFIGURACIÓN Y DATOS
+st.set_page_config(page_title="Sirius Community PRO", layout="centered")
 
-# 2. INICIALIZACIÓN DE DATOS (Persistencia Garantizada)
 if 'usuarios' not in st.session_state:
     st.session_state['usuarios'] = {"admin@sirius.com": "Sirius2026"} 
 if 'usuario_logueado' not in st.session_state:
     st.session_state['usuario_logueado'] = None
-if 'equipos_db' not in st.session_state:
-    st.session_state['equipos_db'] = []
-if 'noticias' not in st.session_state:
-    st.session_state['noticias'] = [{"fecha": "2026-04-10", "titulo": "Sistema de Seguridad Actualizado", "contenido": "Registro corregido y funcionando al 100%.", "icono": "✅"}]
-if 'ligas' not in st.session_state:
-    st.session_state['ligas'] = ["Top Ligue", "Ligue 2"]
-if 'relampagos' not in st.session_state:
-    st.session_state['relampagos'] = ["Relámpago #6"]
-if 'calendarios' not in st.session_state:
-    st.session_state['calendarios'] = {}
+if 'view' not in st.session_state:
+    st.session_state['view'] = 'login' # Controla qué formulario ver
 
-# 3. ESTILO CSS PARA TEXTOS Y BOTONES
+# 2. ESTILO CSS MEJORADO
 st.markdown("""
     <style>
     .stApp { background-color: #0b0e14; }
-    html, body, [data-testid="stWidgetLabel"], .stMarkdown, p, span, label { color: #ffffff !important; }
-    h1, h2, h3 { color: #00ffcc !important; text-align: center; }
-    .stButton>button { width: 100%; background-color: #00ffcc !important; color: #0b0e14 !important; font-weight: bold !important; border-radius: 10px; border: none; padding: 10px; }
-    .stTextInput>div>div>input { background-color: #1a1c24 !important; color: white !important; border: 1px solid #333 !important; }
-    section[data-testid="stSidebar"] { background-color: #161922 !important; border-right: 1px solid #00ffcc; }
-    .noticia-card { background-color: #1a1c24; border-left: 5px solid #00ffcc; padding: 15px; border-radius: 10px; margin-bottom: 10px; }
+    h1, h2 { color: #00ffcc !important; text-align: center; font-family: 'Arial Black'; }
+    .stButton>button { background-color: #00ffcc !important; color: #0b0e14 !important; font-weight: bold; border-radius: 8px; }
+    .link-button { background: none; border: none; color: #00ffcc; text-decoration: underline; cursor: pointer; font-size: 14px; }
+    .css-10trblm { color: white; } /* Color de etiquetas */
     </style>
     """, unsafe_allow_html=True)
 
-# 4. FUNCIONES DE CUENTA
-def realizar_registro(e, p, c):
-    if not e or not p:
-        st.error("Debes rellenar todos los campos.")
-    elif e in st.session_state['usuarios']:
-        st.warning("Este correo ya está registrado.")
-    elif p != c:
-        st.error("Las contraseñas no coinciden.")
-    else:
-        st.session_state['usuarios'][e] = p
-        st.success(f"¡Cuenta creada para {e}! Ya puedes iniciar sesión a la izquierda.")
+# 3. FUNCIONES DE LÓGICA
+def cambiar_vista(nombre_vista):
+    st.session_state['view'] = nombre_vista
+    st.rerun()
 
-# 5. PANTALLA DE ACCESO
+# 4. INTERFAZ DE ACCESO
 if st.session_state['usuario_logueado'] is None:
-    st.title("⚽ ACCESO SIRIUS COMMUNITY")
-    
-    col_login, col_sep, col_reg = st.columns([1, 0.1, 1])
-    
-    with col_login:
-        st.subheader("🔑 Iniciar Sesión")
-        with st.container():
-            e_login = st.text_input("Correo", key="login_user")
-            p_login = st.text_input("Contraseña", type="password", key="login_pass")
-            if st.button("ENTRAR"):
-                if e_login in st.session_state['usuarios'] and st.session_state['usuarios'][e_login] == p_login:
-                    st.session_state['usuario_logueado'] = e_login
-                    st.rerun()
-                else:
-                    st.error("Datos incorrectos.")
+    st.title("⚽ SIRIUS COMMUNITY")
 
-    with col_reg:
-        st.subheader("📝 Registrarse")
-        with st.container():
-            e_reg = st.text_input("Tu Correo", key="reg_user")
-            p_reg = st.text_input("Tu Contraseña", type="password", key="reg_pass")
-            c_reg = st.text_input("Confirmar Contraseña", type="password", key="reg_conf")
-            if st.button("CREAR CUENTA"):
-                realizar_registro(e_reg, p_reg, c_reg)
-
-# 6. PANEL PRINCIPAL (POST-LOGIN)
-else:
-    with st.sidebar:
-        st.title("SIRIUS PANEL")
-        st.write(f"Conectado como: **{st.session_state['usuario_logueado']}**")
-        menu = st.radio("IR A:", ["🏠 Inicio", "🏆 Torneos", "📋 Reporte IA", "📝 Inscribir Equipo", "⚙️ Admin"])
-        if st.button("Cerrar Sesión"):
-            st.session_state['usuario_logueado'] = None
-            st.rerun()
-
-    if menu == "🏠 Inicio":
-        st.title("📢 Noticias y Avisos")
-        for n in reversed(st.session_state['noticias']):
-            st.markdown(f'<div class="noticia-card"><h4>{n["icono"]} {n["titulo"]}</h4><p>{n["contenido"]}</p></div>', unsafe_allow_html=True)
-
-    elif menu == "🏆 Torneos":
-        st.title("🏆 Competiciones Actuales")
-        cat = st.radio("Ver:", ["Ligas", "Relámpagos"], horizontal=True)
-        opc = st.session_state['ligas'] if cat == "Ligas" else st.session_state['relampagos']
-        t_sel = st.selectbox("Selecciona Torneo", opc)
+    # --- VISTA: LOGIN ---
+    if st.session_state['view'] == 'login':
+        st.subheader("Iniciar Sesión")
+        u_login = st.text_input("Correo electrónico")
+        p_login = st.text_input("Contraseña", type="password")
         
-        tab1, tab2 = st.tabs(["📊 Equipos Inscritos", "📅 Calendario de Juegos"])
-        with tab1:
-            eqs = [e for e in st.session_state['equipos_db'] if e["Torneo"] == t_sel]
-            if eqs: st.dataframe(pd.DataFrame(eqs), use_container_width=True)
-            else: st.info("No hay equipos registrados todavía.")
-        with tab2:
-            if t_sel in st.session_state['calendarios']:
-                for idx, jor in enumerate(st.session_state['calendarios'][t_sel]):
-                    with st.expander(f"Jornada {idx+1}"):
-                        for p in jor: st.write(f"• {p}")
-            else: st.warning("El administrador no ha generado los cruces aún.")
+        if st.button("ENTRAR"):
+            if u_login in st.session_state['usuarios'] and st.session_state['usuarios'][u_login] == p_login:
+                st.session_state['usuario_logueado'] = u_login
+                st.rerun()
+            else:
+                st.error("Correo o contraseña incorrectos.")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("¿No tienes cuenta? Crea una aquí", key="btn_reg_link"):
+                cambiar_vista('registro')
+        with col2:
+            if st.button("Olvidé mi contraseña", key="btn_olvido"):
+                cambiar_vista('recuperar')
 
-    elif menu == "📋 Reporte IA":
-        st.title("🤖 Reportar con Imagen")
-        archivo = st.file_uploader("Sube la captura del final", type=["png", "jpg", "jpeg"])
-        if archivo and st.button("Procesar con IA"):
-            st.success("Analizando marcador... ¡Reporte enviado!")
+    # --- VISTA: REGISTRO ---
+    elif st.session_state['view'] == 'registro':
+        st.subheader("Crear Nueva Cuenta")
+        u_reg = st.text_input("Nuevo Correo")
+        p_reg = st.text_input("Contraseña")
+        p_conf = st.text_input("Confirmar Contraseña", type="password")
+        
+        if st.button("REGISTRARME"):
+            if u_reg in st.session_state['usuarios']:
+                st.error("Este correo ya tiene cuenta.")
+            elif p_reg != p_conf:
+                st.error("Las contraseñas no coinciden.")
+            elif u_reg and p_reg:
+                st.session_state['usuarios'][u_reg] = p_reg
+                st.success("¡Cuenta creada! Ya puedes iniciar sesión.")
+                time.sleep(1)
+                cambiar_vista('login')
+        
+        if st.button("Volver al Login"):
+            cambiar_vista('login')
 
-    elif menu == "📝 Inscribir Equipo":
-        st.title("📝 Inscripción de Club")
-        with st.form("form_insc"):
-            n = st.text_input("Nombre del Club")
-            w = st.text_input("WhatsApp")
-            t = st.selectbox("Torneo", st.session_state['ligas'] + st.session_state['relampagos'])
-            if st.form_submit_button("REGISTRAR"):
-                if n and w:
-                    st.session_state['equipos_db'].append({"Nombre": n, "WhatsApp": w, "Torneo": t})
-                    st.success("¡Equipo inscrito con éxito!")
-
-    elif menu == "⚙️ Admin":
-        st.title("⚙️ Panel de Control")
-        if st.session_state['usuario_logueado'] == "admin@sirius.com":
-            t_not, t_gest, t_cruces = st.tabs(["📢 Avisos", "🛠 Equipos", "⚡ Cruces"])
-            
-            with t_not:
-                with st.form("admin_not"):
-                    tit = st.text_input("Título")
-                    msg = st.text_area("Mensaje")
-                    if st.form_submit_button("Publicar"):
-                        st.session_state['noticias'].append({"fecha": "Hoy", "titulo": tit, "contenido": msg, "icono": "📢"})
-                        st.rerun()
-            
-            with t_gest:
-                if st.session_state['equipos_db']:
-                    df = pd.DataFrame(st.session_state['equipos_db'])
-                    st.dataframe(df)
-                    eq_del = st.selectbox("Borrar equipo:", [e["Nombre"] for e in st.session_state['equipos_db']])
-                    if st.button("BORRAR SELECCIONADO"):
-                        st.session_state['equipos_db'] = [e for e in st.session_state['equipos_db'] if e["Nombre"] != eq_del]
-                        st.rerun()
-
-            with t_cruces:
-                t_gen = st.selectbox("Torneo para fixture:", st.session_state['ligas'] + st.session_state['relampagos'])
-                if st.button("GENERAR CRUCES"):
-                    lista = [e["Nombre"] for e in st.session_state['equipos_db'] if e["Torneo"] == t_gen]
-                    if len(lista) >= 2:
-                        random.shuffle(lista)
-                        st.session_state['calendarios'][t_gen] = [[f"{lista[0]} vs {lista[1]}"]]
-                        st.success("¡Fixture publicado!")
+    # --- VISTA: RECUPERAR CONTRASEÑA ---
+    elif st.session_state['view'] == 'recuperar':
+        st.subheader("Recuperar Acceso")
+        u_rec = st.text_input("Introduce tu correo para recibir el código")
+        
+        if "codigo_verificacion" not in st.session_state:
+            if st.button("Enviar Código"):
+                if u_rec in st.session_state['usuarios']:
+                    # Simulamos envío de correo
+                    st.session_state['codigo_verificacion'] = str(random.randint(1000, 9999))
+                    st.info(f"CÓDIGO ENVIADO A {u_rec}: {st.session_state['codigo_verificacion']}") # Simulación
+                else:
+                    st.error("Ese correo no está registrado.")
         else:
-            st.error("Acceso restringido solo para administradores.")
+            cod_ingresado = st.text_input("Introduce el código de 4 dígitos")
+            nueva_pass = st.text_input("Nueva Contraseña", type="password")
+            
+            if st.button("Cambiar Contraseña"):
+                if cod_ingresado == st.session_state['codigo_verificacion']:
+                    st.session_state['usuarios'][u_rec] = nueva_pass
+                    st.success("Contraseña actualizada con éxito.")
+                    del st.session_state['codigo_verificacion']
+                    time.sleep(1)
+                    cambiar_vista('login')
+                else:
+                    st.error("Código incorrecto.")
+        
+        if st.button("Cancelar"):
+            if "codigo_verificacion" in st.session_state: del st.session_state['codigo_verificacion']
+            cambiar_vista('login')
+
+# 5. PANEL DE CONTROL (CUANDO YA ENTRÓ)
+else:
+    st.sidebar.success(f"Sesión activa: {st.session_state['usuario_logueado']}")
+    if st.sidebar.button("Cerrar Sesión"):
+        st.session_state['usuario_logueado'] = None
+        st.rerun()
+    
+    st.title(f"Bienvenido a Sirius, {st.session_state['usuario_logueado']}")
+    st.write("Aquí va el resto de tu contenido (Noticias, Inscripciones, etc.)")
